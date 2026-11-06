@@ -1,49 +1,45 @@
 package com.sed.glassmediawidget
 
-import android.content.Intent
+import android.content.ComponentName
 import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.service.notification.NotificationListenerService
 
 class MediaNotificationListener : NotificationListenerService() {
     private var manager: MediaSessionManager? = null
-    private val callback = object : MediaSessionManager.OnActiveSessionsChangedListener {
-        override fun onActiveSessionsChanged(controllers: MutableList<MediaController>?) {
-            MediaRepository.update(controllers?.firstOrNull())
-            GlassMediaWidgetProvider.refresh(this@MediaNotificationListener)
-        }
+
+    private val callback = MediaSessionManager.OnActiveSessionsChangedListener { controllers ->
+        val selected = controllers?.firstOrNull {
+            it.playbackState?.state == android.media.session.PlaybackState.STATE_PLAYING
+        } ?: controllers?.firstOrNull()
+        MediaRepository.update(selected)
+        GlassMediaWidgetProvider.refresh(this)
     }
 
     override fun onListenerConnected() {
         super.onListenerConnected()
         manager = getSystemService(MediaSessionManager::class.java)
-        manager?.addOnActiveSessionsChangedListener(callback, null)
-        MediaRepository.update(manager?.getActiveSessions(null)?.firstOrNull())
+        val listenerComponent = ComponentName(this, MediaNotificationListener::class.java)
+        try {
+            manager?.addOnActiveSessionsChangedListener(callback, listenerComponent)
+            val sessions = manager?.getActiveSessions(listenerComponent).orEmpty()
+            MediaRepository.update(
+                sessions.firstOrNull { it.playbackState?.state == android.media.session.PlaybackState.STATE_PLAYING }
+                    ?: sessions.firstOrNull()
+            )
+        } catch (_: SecurityException) {
+            MediaRepository.update(null)
+        }
         GlassMediaWidgetProvider.refresh(this)
     }
 
     override fun onListenerDisconnected() {
-        manager?.removeOnActiveSessionsChangedListener(callback)
-        manager = null
-        super.onListenerDisconnected()
-    }
-
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        when (intent?.action) {
-            ACTION_PREVIOUS -> MediaRepository.active(this)?.transportControls?.skipToPrevious()
-            ACTION_NEXT -> MediaRepository.active(this)?.transportControls?.skipToNext()
-            ACTION_PLAY_PAUSE -> {
-                val c = MediaRepository.active(this)
-                if (c?.playbackState?.state == android.media.session.PlaybackState.STATE_PLAYING) c.transportControls.pause()
-                else c?.transportControls?.play()
-            }
+        try {
+            manager?.removeOnActiveSessionsChangedListener(callback)
+        } catch (_: Exception) {
         }
-        return super.onStartCommand(intent, flags, startId)
-    }
-
-    companion object {
-        const val ACTION_PREVIOUS = "com.sed.glassmediawidget.PREVIOUS"
-        const val ACTION_PLAY_PAUSE = "com.sed.glassmediawidget.PLAY_PAUSE"
-        const val ACTION_NEXT = "com.sed.glassmediawidget.NEXT"
+        manager = null
+        MediaRepository.update(null)
+        super.onListenerDisconnected()
     }
 }
