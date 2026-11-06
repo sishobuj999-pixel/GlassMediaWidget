@@ -1,21 +1,34 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <application android:theme="@style/Theme.GlassMediaWidget" android:label="Glass Media Widget">
+    <application
+        android:theme="@style/Theme.GlassMediaWidget"
+        android:label="Glass Media Widget"
+        android:allowBackup="true"
+        android:supportsRtl="true">
         <activity android:name=".MainActivity" android:exported="true">
-            <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
         </activity>
+
         <service
             android:name=".MediaNotificationListener"
             android:label="Glass Media Widget"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
             android:exported="true">
-            <intent-filter><action android:name="android.service.notification.NotificationListenerService"/></intent-filter>
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService"/>
+            </intent-filter>
         </service>
+
         <receiver android:name=".GlassMediaWidgetProvider" android:exported="false">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
                 <action android:name="com.sed.glassmediawidget.MEDIA_CHANGED"/>
             </intent-filter>
-            <meta-data android:name="android.appwidget.provider" android:resource="@xml/glass_media_widget_info"/>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/glass_media_widget_info"/>
         </receiver>
     </application>
 </manifest>
